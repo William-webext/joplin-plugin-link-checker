@@ -101,26 +101,56 @@ joplin.plugins.register({
       `;
     }
 
-    // CSS dinamico compatibile con temi Chiari e Scuri
+    // CSS con azzeramento del layout WebView e scrollbar personalizzata visibile
     function getPanelStyles(): string {
       return `
         <style>
-          body {
+          html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
             font-family: var(--joplin-font-family, sans-serif);
             font-size: var(--joplin-font-size, 13px);
             color: var(--joplin-color);
             background-color: var(--joplin-background-color);
-            padding: 12px;
-            margin: 0;
+          }
+          .main-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
           }
           h3, h4 {
             color: var(--joplin-color);
             margin-top: 0;
           }
+          .header-section {
+            padding: 12px;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--joplin-divider-color, #444);
+          }
+          .results-section {
+            padding: 12px;
+            flex-grow: 1;
+            overflow-y: scroll; /* Forza sempre la scrollbar visibile */
+            max-height: calc(100vh - 180px); /* Limite tassativo per attivare lo scroll */
+          }
+          /* Custom Scrollbar per tematismi Webkit */
+          .results-section::-webkit-scrollbar {
+            width: 8px;
+          }
+          .results-section::-webkit-scrollbar-track {
+            background: var(--joplin-background-color-2, #222);
+          }
+          .results-section::-webkit-scrollbar-thumb {
+            background: var(--joplin-divider-color, #666);
+            border-radius: 4px;
+          }
           .joplin-input {
             width: 100%;
             padding: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             background-color: var(--joplin-background-color-2, #2a2a2a);
             color: var(--joplin-color, #ffffff);
             border: 1px solid var(--joplin-divider-color, #555);
@@ -165,7 +195,7 @@ joplin.plugins.register({
             border: 1px solid var(--joplin-divider-color, #555);
             border-radius: 4px;
             font-size: 11px;
-            margin-top: 8px;
+            margin-top: 6px;
           }
           .btn-secondary:hover {
             color: var(--joplin-color);
@@ -199,14 +229,17 @@ joplin.plugins.register({
       const dropdownHtml = await getFoldersDropdownHtml('ALL');
       await joplin.views.panels.setHtml(panel, `
         ${getPanelStyles()}
-        <div>
-          <h3>Link Checker</h3>
-          <label style="font-size: 12px; display: block; margin-bottom: 4px; font-weight: bold;">Select Notebook:</label>
-          ${dropdownHtml}
-          <button id="scanBtn" class="btn-primary" onclick="const fId = document.getElementById('folderSelect').value; webviewApi.postMessage({name: 'startScan', folderId: fId});">Start Scan</button>
-          <button id="resetBtn" class="btn-secondary" onclick="webviewApi.postMessage({name: 'resetHistory'});">Reset Failure History</button>
-          
-          <div id="results" style="margin-top: 15px;">${messageText}</div>
+        <div class="main-wrapper">
+          <div class="header-section">
+            <h3>Link Checker</h3>
+            <label style="font-size: 12px; display: block; margin-bottom: 4px; font-weight: bold;">Select Notebook:</label>
+            ${dropdownHtml}
+            <button id="scanBtn" class="btn-primary" onclick="const fId = document.getElementById('folderSelect').value; webviewApi.postMessage({name: 'startScan', folderId: fId});">Start Scan</button>
+            <button id="resetBtn" class="btn-secondary" onclick="webviewApi.postMessage({name: 'resetHistory'});">Reset Failure History</button>
+          </div>
+          <div class="results-section" id="results">
+            ${messageText}
+          </div>
         </div>
       `);
     }
@@ -276,19 +309,22 @@ joplin.plugins.register({
         const dropdownHtml = await getFoldersDropdownHtml(targetFolderId);
         await joplin.views.panels.setHtml(panel, `
           ${getPanelStyles()}
-          <div>
-            <h3>Link Checker</h3>
-            <label style="font-size: 12px; display: block; margin-bottom: 4px; font-weight: bold;">Select Notebook:</label>
-            ${dropdownHtml}
-            <button class="btn-danger" onclick="webviewApi.postMessage({name: 'stopScan'});">Stop Scan</button>
-            <button class="btn-secondary" disabled>Reset Failure History</button>
-            
-            <div style="margin-top: 15px;">
-              <div style="font-size:12px; margin-bottom: 4px;">Scanning note ${i + 1} of ${totalNotes} (${progressPercent}%)</div>
-              <progress value="${progressPercent}" max="100" style="width:100%;"></progress>
+          <div class="main-wrapper">
+            <div class="header-section">
+              <h3>Link Checker</h3>
+              <label style="font-size: 12px; display: block; margin-bottom: 4px; font-weight: bold;">Select Notebook:</label>
+              ${dropdownHtml}
+              <button class="btn-danger" onclick="webviewApi.postMessage({name: 'stopScan'});">Stop Scan</button>
+              <button class="btn-secondary" disabled>Reset Failure History</button>
+              
+              <div style="margin-top: 10px;">
+                <div style="font-size:12px; margin-bottom: 4px;">Scanning note ${i + 1} of ${totalNotes} (${progressPercent}%)</div>
+                <progress value="${progressPercent}" max="100" style="width:100%;"></progress>
+              </div>
             </div>
-
-            <div style="margin-top: 15px;">${resultsHtml}</div>
+            <div class="results-section">
+              ${resultsHtml}
+            </div>
           </div>
         `);
 
@@ -334,14 +370,15 @@ joplin.plugins.register({
       const finalMsg = resultsHtml ? resultsHtml : '<p class="wayback-link">All checked links are working!</p>';
       await joplin.views.panels.setHtml(panel, `
         ${getPanelStyles()}
-        <div>
-          <h3>Link Checker</h3>
-          <label style="font-size: 12px; display: block; margin-bottom: 4px; font-weight: bold;">Select Notebook:</label>
-          ${dropdownHtml}
-          <button class="btn-primary" onclick="const fId = document.getElementById('folderSelect').value; webviewApi.postMessage({name: 'startScan', folderId: fId});">Start Scan</button>
-          <button class="btn-secondary" onclick="webviewApi.postMessage({name: 'resetHistory'});">Reset Failure History</button>
-          
-          <div style="margin-top: 15px;">
+        <div class="main-wrapper">
+          <div class="header-section">
+            <h3>Link Checker</h3>
+            <label style="font-size: 12px; display: block; margin-bottom: 4px; font-weight: bold;">Select Notebook:</label>
+            ${dropdownHtml}
+            <button class="btn-primary" onclick="const fId = document.getElementById('folderSelect').value; webviewApi.postMessage({name: 'startScan', folderId: fId});">Start Scan</button>
+            <button class="btn-secondary" onclick="webviewApi.postMessage({name: 'resetHistory'});">Reset Failure History</button>
+          </div>
+          <div class="results-section">
             ${statusNotice}
             <h4>Broken Links Found:</h4>
             ${finalMsg}
