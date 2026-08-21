@@ -2,7 +2,7 @@
 	"manifest_version": 1,
 	"id": "com.william.linkcheker",
 	"app_min_version": "2.8.0",
-	"version": "1.0.4",
+	"version": "1.0.5",
 	"name": "Link Checker",
 	"description": "Scans notes and notebooks for broken external links (link rot) with retry thresholds and Wayback Machine recovery options.",
 	"author": "William Baglioni",
